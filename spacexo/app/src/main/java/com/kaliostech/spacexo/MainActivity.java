@@ -1,10 +1,16 @@
 package com.kaliostech.spacexo;
 
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
+
+import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import com.kaliostech.spacexo.databinding.ActivityMainBinding;
+import com.kaliostech.spacexo.singleplayer.Bot;
+import com.kaliostech.spacexo.soundmanager.SoundManager;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,12 +19,48 @@ public class MainActivity extends AppCompatActivity {
     private final List<int[]> combinationList = new ArrayList<>();
     private int[] boxPositions = {0,0,0,0,0,0,0,0,0}; //9 zero
     private int playerTurn = 1;
-    private int totalSelectedBoxes = 1;
+    private int totalSelectedBoxes = 0;
+    private Bot bot;
+    private boolean isSinglePlayer = false;
+    private boolean isPlaying = true; // Flag to track playback status
+    private SoundManager soundManager;
+    private MediaPlayer mediaPlayer;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+
+        soundManager = new SoundManager(this, R.raw.laser);
+
+        mediaPlayer = MediaPlayer.create(this, R.raw.backgroundmusic);
+        mediaPlayer.setLooping(true); // Set to loop indefinitely
+        mediaPlayer.setVolume(0.2f, 0.2f);
+        mediaPlayer.start();
+
+        bot = new Bot(); // Initialize the bot
+        isSinglePlayer = getIntent().getBooleanExtra("singlePlayer", false);
+
+        binding.playbackgroundmusic.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isPlaying) {
+                    // Stop the music if it is currently playing
+                    binding.playbackgroundmusic.setImageResource(R.drawable.ic_musicon);
+                    mediaPlayer.pause(); // Use pause() instead of stop() to resume playback later
+
+                    isPlaying = false;
+                } else {
+                    // Start the music if it is currently not playing
+                    binding.playbackgroundmusic.setImageResource(R.drawable.ic_musicoff);
+                    mediaPlayer.start();
+                    isPlaying = true;
+                }
+            }
+        });
+
         combinationList.add(new int[] {0,1,2});
         combinationList.add(new int[] {3,4,5});
         combinationList.add(new int[] {6,7,8});
@@ -27,154 +69,139 @@ public class MainActivity extends AppCompatActivity {
         combinationList.add(new int[] {2,5,8});
         combinationList.add(new int[] {2,4,6});
         combinationList.add(new int[] {0,4,8});
+
         String getPlayerOneName = getIntent().getStringExtra("playerOne");
         String getPlayerTwoName = getIntent().getStringExtra("playerTwo");
         binding.playerOneName.setText(getPlayerOneName);
         binding.playerTwoName.setText(getPlayerTwoName);
-        binding.image1.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isBoxSelectable(0)){
-                    performAction((ImageView) view, 0);
-                }
-            }
-        });
-        binding.image2.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isBoxSelectable(1)){
-                    performAction((ImageView) view, 1);
-                }
-            }
-        });
-        binding.image3.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isBoxSelectable(2)){
-                    performAction((ImageView) view, 2);
-                }
-            }
-        });
-        binding.image4.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isBoxSelectable(3)){
-                    performAction((ImageView) view, 3);
-                }
-            }
-        });
-        binding.image5.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isBoxSelectable(4)){
-                    performAction((ImageView) view, 4);
-                }
-            }
-        });
-        binding.image6.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isBoxSelectable(5)){
-                    performAction((ImageView) view, 5);
-                }
-            }
-        });
-        binding.image7.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isBoxSelectable(6)){
-                    performAction((ImageView) view, 6);
-                }
-            }
-        });
-        binding.image8.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isBoxSelectable(7)){
-                    performAction((ImageView) view, 7);
-                }
-            }
-        });
-        binding.image9.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (isBoxSelectable(8)){
-                    performAction((ImageView) view, 8);
-                }
-            }
-        });
+
+        binding.image1.setOnClickListener(createClickListener(0));
+        binding.image2.setOnClickListener(createClickListener(1));
+        binding.image3.setOnClickListener(createClickListener(2));
+        binding.image4.setOnClickListener(createClickListener(3));
+        binding.image5.setOnClickListener(createClickListener(4));
+        binding.image6.setOnClickListener(createClickListener(5));
+        binding.image7.setOnClickListener(createClickListener(6));
+        binding.image8.setOnClickListener(createClickListener(7));
+        binding.image9.setOnClickListener(createClickListener(8));
     }
-    private void performAction(ImageView  imageView, int selectedBoxPosition) {
+
+    private View.OnClickListener createClickListener(final int position) {
+        return new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (isBoxSelectable(position)) {
+                    performAction((ImageView) view, position);
+                }
+            }
+        };
+    }
+
+    private void performAction(ImageView imageView, int selectedBoxPosition) {
         boxPositions[selectedBoxPosition] = playerTurn;
         if (playerTurn == 1) {
             imageView.setImageResource(R.drawable.x_image);
+            soundManager.playSound();
             if (checkResults()) {
-                ResultDialog resultDialog = new ResultDialog(MainActivity.this, binding.playerOneName.getText().toString()
-                        , MainActivity.this);
-                resultDialog.setCancelable(false);
-                resultDialog.show();
-            } else if(totalSelectedBoxes == 9) {
-                ResultDialog resultDialog = new ResultDialog(MainActivity.this, "Match Draw", MainActivity.this);
-                resultDialog.setCancelable(false);
-                resultDialog.show();
+                showResult(binding.playerOneName.getText().toString());
+            } else if (totalSelectedBoxes == 9) {
+                showResult("Match Draw");
             } else {
                 changePlayerTurn(2);
                 totalSelectedBoxes++;
+                if (isSinglePlayer) {
+                    botMove();
+                }
             }
         } else {
             imageView.setImageResource(R.drawable.o_image);
+            soundManager.playSound();
             if (checkResults()) {
-                ResultDialog resultDialog = new ResultDialog(MainActivity.this, binding.playerTwoName.getText().toString()
-                        , MainActivity.this);
-                resultDialog.setCancelable(false);
-                resultDialog.show();
-            } else if(totalSelectedBoxes == 9) {
-                ResultDialog resultDialog = new ResultDialog(MainActivity.this, "Match Draw", MainActivity.this);
-                resultDialog.setCancelable(false);
-                resultDialog.show();
+                showResult(binding.playerTwoName.getText().toString());
+            } else if (totalSelectedBoxes == 9) {
+                showResult("Match Draw");
             } else {
                 changePlayerTurn(1);
                 totalSelectedBoxes++;
             }
         }
     }
+
+    private void showResult(String winner) {
+        ResultDialog resultDialog = new ResultDialog(MainActivity.this, winner, MainActivity.this);
+        resultDialog.setCancelable(false);
+        resultDialog.show();
+    }
+
     private void changePlayerTurn(int currentPlayerTurn) {
         playerTurn = currentPlayerTurn;
         if (playerTurn == 1) {
-//            binding.playerOneLayout.setBackgroundResource(R.drawable.black_border);
-//            binding.playerTwoLayout.setBackgroundResource(R.drawable.white_box);
             binding.playerX.setBackgroundResource(R.drawable.black_border);
             binding.playerO.setBackgroundResource(R.drawable.white_box);
-
         } else {
-//            binding.playerTwoLayout.setBackgroundResource(R.drawable.black_border);
-//            binding.playerOneLayout.setBackgroundResource(R.drawable.white_box);
             binding.playerX.setBackgroundResource(R.drawable.white_box);
             binding.playerO.setBackgroundResource(R.drawable.black_border);
         }
     }
-    private boolean checkResults(){
-        boolean response = false;
-        for (int i = 0; i < combinationList.size(); i++){
-            final int[] combination = combinationList.get(i);
-            if (boxPositions[combination[0]] == playerTurn && boxPositions[combination[1]] == playerTurn &&
+
+    private boolean checkResults() {
+        for (int[] combination : combinationList) {
+            if (boxPositions[combination[0]] == playerTurn &&
+                    boxPositions[combination[1]] == playerTurn &&
                     boxPositions[combination[2]] == playerTurn) {
-                response = true;
+                return true;
             }
         }
-        return response;
+        return false;
     }
+
     private boolean isBoxSelectable(int boxPosition) {
-        boolean response = false;
-        if (boxPositions[boxPosition] == 0) {
-            response = true;
-        }
-        return response;
+        return boxPositions[boxPosition] == 0;
     }
-    public void restartMatch(){
+    // Bot intergration
+    private void botMove() {
+        // Check if there are any moves left for the bot
+        boolean movesLeft = false;
+        for (int position : boxPositions) {
+            if (position == 0) {
+                movesLeft = true;
+                break;
+            }
+        }
+        // If no moves are left, check for a result and return
+        if (!movesLeft) {
+            showResult("Match Draw");
+            return; // Exit the method to prevent further execution
+        }
+        // Delay the bot's move by 1 second (1000 milliseconds)
+        new android.os.Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                int move = bot.getMove(boxPositions);
+                ImageView botImageView = getImageViewForPosition(move);
+                performAction(botImageView, move);
+            }
+        }, 1000); // 1000 milliseconds delay
+    }
+    private ImageView getImageViewForPosition(int position) {
+        switch (position) {
+            case 0: return binding.image1;
+            case 1: return binding.image2;
+            case 2: return binding.image3;
+            case 3: return binding.image4;
+            case 4: return binding.image5;
+            case 5: return binding.image6;
+            case 6: return binding.image7;
+            case 7: return binding.image8;
+            case 8: return binding.image9;
+            default: return null;
+        }
+    }
+
+    public void restartMatch() {
         boxPositions = new int[] {0,0,0,0,0,0,0,0,0}; //9 zero
         playerTurn = 1;
-        totalSelectedBoxes = 1;
+        totalSelectedBoxes = 0;
         binding.image1.setImageResource(R.drawable.white_box);
         binding.image2.setImageResource(R.drawable.white_box);
         binding.image3.setImageResource(R.drawable.white_box);
