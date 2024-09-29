@@ -1,11 +1,13 @@
 package com.kaliostech.spacexo;
 
+import android.app.Dialog;
+import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
-
-import androidx.activity.EdgeToEdge;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.kaliostech.spacexo.databinding.ActivityMainBinding;
 import com.kaliostech.spacexo.singleplayer.Bot;
@@ -13,6 +15,7 @@ import com.kaliostech.spacexo.soundmanager.SoundManager;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
     ActivityMainBinding binding;
@@ -22,9 +25,12 @@ public class MainActivity extends AppCompatActivity {
     private int totalSelectedBoxes = 0;
     private Bot bot;
     private boolean isSinglePlayer = false;
-    private boolean isPlaying = true; // Flag to track playback status
+    private boolean isPlaying;
     private SoundManager soundManager;
     private MediaPlayer mediaPlayer;
+    Dialog dailog;
+    ImageView btnresume, btnmainmenu, btnsound, btnexit;
+    private boolean isUserTurn = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,32 +38,87 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-
+        // sound
         soundManager = new SoundManager(this, R.raw.laser);
-
         mediaPlayer = MediaPlayer.create(this, R.raw.backgroundmusic);
         mediaPlayer.setLooping(true); // Set to loop indefinitely
-        mediaPlayer.setVolume(0.2f, 0.2f);
+        mediaPlayer.setVolume(1.0f, 1.0f);
+        isPlaying = true;
         mediaPlayer.start();
 
         bot = new Bot(); // Initialize the bot
         isSinglePlayer = getIntent().getBooleanExtra("singlePlayer", false);
 
-        binding.playbackgroundmusic.setOnClickListener(new View.OnClickListener() {
+        // Dailog
+        dailog = new Dialog(this);
+        dailog.setContentView(R.layout.dialog_pause_game_menu);
+        Objects.requireNonNull(dailog.getWindow()).setLayout(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        btnresume = dailog.getWindow().findViewById(R.id.resume);
+        btnmainmenu = dailog.getWindow().findViewById(R.id.mainmenu);
+        btnsound = dailog.getWindow().findViewById(R.id.sound);
+        btnexit = dailog.getWindow().findViewById(R.id.exit);
+
+        btnresume.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(isPlaying){
+                    soundManager.playSound();
+                }
+                dailog.dismiss();
+            }
+        });
+        btnmainmenu.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(isPlaying){
+                    soundManager.playSound();
+                }
+                Intent intent = new Intent(MainActivity.this, PlayerChoice.class);
+                startActivity(intent);
+                finish();
+            }
+        });
+        btnsound.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (isPlaying) {
                     // Stop the music if it is currently playing
-                    binding.playbackgroundmusic.setImageResource(R.drawable.ic_musicon);
-                    mediaPlayer.pause(); // Use pause() instead of stop() to resume playback later
-
-                    isPlaying = false;
+                    mediaPlayer.pause();
+                    soundManager.stopSound();
+                    btnsound.setImageResource(R.drawable.soundoff);
+                    isPlaying =false;
                 } else {
                     // Start the music if it is currently not playing
-                    binding.playbackgroundmusic.setImageResource(R.drawable.ic_musicoff);
                     mediaPlayer.start();
+                    soundManager.playSound();
+                    btnsound.setImageResource(R.drawable.soundon);
                     isPlaying = true;
                 }
+            }
+        });
+
+
+        btnexit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(isPlaying){
+                    soundManager.playSound();
+                }
+                Toast.makeText(MainActivity.this, "Game Closed", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+
+
+
+
+        binding.menu.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(isPlaying){
+                    soundManager.playSound();
+                }
+                dailog.show();
             }
         });
 
@@ -90,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
         return new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (isBoxSelectable(position)) {
+                if (isUserTurn && isBoxSelectable(position)) {
                     performAction((ImageView) view, position);
                 }
             }
@@ -101,7 +162,12 @@ public class MainActivity extends AppCompatActivity {
         boxPositions[selectedBoxPosition] = playerTurn;
         if (playerTurn == 1) {
             imageView.setImageResource(R.drawable.x_image);
-            soundManager.playSound();
+            // Play the sound effect
+            if (isPlaying) {
+                soundManager.playSound();
+            } else {
+                soundManager.stopSound();
+            }
             if (checkResults()) {
                 showResult(binding.playerOneName.getText().toString());
             } else if (totalSelectedBoxes == 9) {
@@ -110,12 +176,18 @@ public class MainActivity extends AppCompatActivity {
                 changePlayerTurn(2);
                 totalSelectedBoxes++;
                 if (isSinglePlayer) {
+                    isUserTurn = false;
                     botMove();
                 }
             }
         } else {
             imageView.setImageResource(R.drawable.o_image);
-            soundManager.playSound();
+            // Play the sound effect
+            if (isPlaying) {
+                soundManager.playSound();
+            } else {
+                soundManager.stopSound();
+            }
             if (checkResults()) {
                 showResult(binding.playerTwoName.getText().toString());
             } else if (totalSelectedBoxes == 9) {
@@ -180,6 +252,7 @@ public class MainActivity extends AppCompatActivity {
                 int move = bot.getMove(boxPositions);
                 ImageView botImageView = getImageViewForPosition(move);
                 performAction(botImageView, move);
+                isUserTurn = true;
             }
         }, 1000); // 1000 milliseconds delay
     }

@@ -22,5 +22,12 @@ public class SoundManager {
             mediaPlayer = null;
         }
     }
+
+    public void stopSound() {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.prepareAsync();
+        }
+    }
 }
 

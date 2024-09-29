@@ -8,7 +8,6 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.kaliostech.spacexo.soundmanager.SoundManager;
@@ -16,6 +15,7 @@ import com.kaliostech.spacexo.soundmanager.SoundManager;
 public class AddPlayer extends AppCompatActivity {
 
     private SoundManager soundManager;
+    private boolean isPlaying;  // Track current sound state
 
 
     @Override
@@ -26,8 +26,14 @@ public class AddPlayer extends AppCompatActivity {
         EditText playerTwo = findViewById(R.id.playerTwo);
         ImageView startGameButton = findViewById(R.id.startGameButton);
 
-
-        soundManager = new SoundManager(this, R.raw.buttonclick); // Replace sound_effect with your sound file name
+        soundManager = new SoundManager(this, R.raw.buttonclick);
+        MediaPlayer mediaPlayer = MediaPlayer.create(this, R.raw.login);
+        mediaPlayer.setLooping(true); // Set to loop indefinitely
+        mediaPlayer.setVolume(0.2f, 0.2f);
+        mediaPlayer.start();
+        // Using the interface
+        PreferenceHelper preferenceHelper = new SharedPreferencesManager(this);
+        isPlaying = preferenceHelper.getIsPlaying();
 
 
         // bot implementation for 1 player
@@ -40,9 +46,15 @@ public class AddPlayer extends AppCompatActivity {
         startGameButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                soundManager.playSound();
-
+                // Play the sound effect
+                if (isPlaying) {
+                    soundManager.playSound();
+                    mediaPlayer.stop();
+                }
+                else {
+                    soundManager.stopSound();
+                    mediaPlayer.stop();
+                }
                 if (!isSinglePlayer){
                     String getPlayerOneName = playerOne.getText().toString();
                     String getPlayerTwoName = playerTwo.getText().toString();
