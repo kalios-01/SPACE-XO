@@ -6,17 +6,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg"
-    tools:context=".SplashScreen">
+    tools:context=".ui.SplashScreen">
 
     <TextView
-        android:id="@+id/textView3"
+        android:id="@+id/sp_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="225dp"
         android:fontFamily="@font/pavelt"
         android:text="SPACE"
         android:textColor="#fff"
-        android:textSize="75dp"
+        android:textSize="75sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -27,9 +27,9 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:gravity="center"
-        app:layout_constraintEnd_toEndOf="@+id/textView3"
-        app:layout_constraintStart_toStartOf="@+id/textView3"
-        app:layout_constraintTop_toBottomOf="@+id/textView3">
+        app:layout_constraintEnd_toEndOf="@+id/sp_title"
+        app:layout_constraintStart_toStartOf="@+id/sp_title"
+        app:layout_constraintTop_toBottomOf="@+id/sp_title">
 
         <ImageView
             android:layout_width="75dp"
